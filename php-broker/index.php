@@ -71,7 +71,6 @@ $codigoHttp = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 $errorCurl = curl_error($curl);
 
 // Cerrar conexión
-curl_close($curl);
 
 // Error cuando Python no está disponible
 if ($respuesta === false) {
