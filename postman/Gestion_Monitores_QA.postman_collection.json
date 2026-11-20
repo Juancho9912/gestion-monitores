@@ -1,0 +1,439 @@
+{
+  "info": {
+    "name": "Gestión de monitores - Pruebas QA",
+    "description": "Colección para probar los endpoints a través de PHP (8000), Python (5000) o Java (8080). Ejecutar las carpetas 01, 02 y 03 en ese orden. La carpeta 03 crea, actualiza y elimina un monitor temporal. Si el código temporal ya existe, cambiar codigo_prueba antes de ejecutar. Los casos con código 202601 presuponen que el dato semilla está presente en SQLite. Java valida campos y correo; algunos mensajes pueden variar sin cambiar el código HTTP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "codigo_prueba",
+      "value": "202699",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Consultas sin modificar datos",
+      "item": [
+        {
+          "name": "Consultar materias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/materias",
+            "description": "GET /api/materias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Materias como lista\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar monitores",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores",
+            "description": "GET /api/monitores"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Monitores como lista\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar monitor existente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/202601",
+            "description": "GET /api/monitores/202601"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Código correcto\", () => pm.expect(pm.response.json().codigo).to.eql(\"202601\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Monitor inexistente - 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/999999",
+            "description": "GET /api/monitores/999999"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Error explicado\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Método no permitido - 405",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/materias",
+            "description": "DELETE /api/materias"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 405\", function () { pm.response.to.have.status(405); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Permite únicamente GET\", () => pm.expect(pm.response.headers.get(\"Allow\")).to.include(\"GET\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Validaciones de errores",
+      "item": [
+        {
+          "name": "Campos vacíos - 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores",
+            "description": "POST /api/monitores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigo_prueba}}\",\n  \"nombre_completo\": \"\",\n  \"correo\": \"\",\n  \"materia_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 400\", function () { pm.response.to.have.status(400); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Error explicado\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Código duplicado - 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores",
+            "description": "POST /api/monitores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"202601\",\n  \"nombre_completo\": \"Monitor Duplicado QA\",\n  \"correo\": \"monitor.duplicado@ejemplo.edu.co\",\n  \"materia_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 409\", function () { pm.response.to.have.status(409); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Error explicado\", () => pm.expect(pm.response.json().error).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - CRUD secuencial (ejecutar en orden)",
+      "item": [
+        {
+          "name": "1. Crear monitor temporal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores",
+            "description": "POST /api/monitores",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigo_prueba}}\",\n  \"nombre_completo\": \"Monitor QA Prueba\",\n  \"correo\": \"monitor.qa@ejemplo.edu.co\",\n  \"materia_id\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Registro exitoso (200 o 201)\", () => pm.expect([200,201]).to.include(pm.response.code));",
+                  "pm.test(\"Código creado\", () => pm.expect(pm.response.json().codigo).to.eql(pm.collectionVariables.get(\"codigo_prueba\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Consultar monitor temporal",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/{{codigo_prueba}}",
+            "description": "GET /api/monitores/{{codigo_prueba}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Código coincide\", () => pm.expect(pm.response.json().codigo).to.eql(pm.collectionVariables.get(\"codigo_prueba\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Actualizar monitor temporal",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/{{codigo_prueba}}",
+            "description": "PUT /api/monitores/{{codigo_prueba}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigo_prueba}}\",\n  \"nombre_completo\": \"Monitor QA Actualizado\",\n  \"correo\": \"monitor.qa.actualizado@ejemplo.edu.co\",\n  \"materia_id\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Nombre actualizado\", () => pm.expect(pm.response.json().nombre_completo).to.eql(\"Monitor QA Actualizado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Consultar monitor actualizado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/{{codigo_prueba}}",
+            "description": "GET /api/monitores/{{codigo_prueba}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Materia actualizada\", () => pm.expect(pm.response.json().materia_id).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Eliminar monitor temporal",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/{{codigo_prueba}}",
+            "description": "DELETE /api/monitores/{{codigo_prueba}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Eliminación confirmada\", () => pm.expect(pm.response.json().mensaje).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Confirmar eliminación - 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/monitores/{{codigo_prueba}}",
+            "description": "GET /api/monitores/{{codigo_prueba}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Código HTTP 404\", function () { pm.response.to.have.status(404); });",
+                  "pm.test(\"Respuesta JSON\", function () { pm.response.to.be.json; });",
+                  "pm.test(\"Error explicado\", () => pm.expect(pm.response.json().error).to.be.a(\"string\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
