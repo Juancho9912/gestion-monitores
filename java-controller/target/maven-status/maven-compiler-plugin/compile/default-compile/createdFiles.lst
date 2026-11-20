@@ -1,0 +1,5 @@
+com\ucaldas\monitores_controller\controller\MonitorController$HttpMethod.class
+com\ucaldas\monitores_controller\model\MonitorDTO.class
+com\ucaldas\monitores_controller\config\CorsConfig.class
+com\ucaldas\monitores_controller\controller\MonitorController.class
+com\ucaldas\monitores_controller\MonitoresControllerApplication.class

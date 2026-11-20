@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: com.ucaldas.monitores_controller.controller.MonitorControllerTest
+-------------------------------------------------------------------------------
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 11.34 s -- in com.ucaldas.monitores_controller.controller.MonitorControllerTest
