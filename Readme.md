@@ -1,172 +1,153 @@
-# Sistema Distribuido de Gestión de Monitores Académicos
+Gestión de Monitores Académicos
+Universidad de Caldas — Arquitectura de Software
 
-**Universidad de Caldas** — Arquitectura de Software
+En este taller desarrollamos una aplicación web para llevar el registro de los monitores académicos y las materias a las que están asignados. Desde la página podemos consultar los monitores, buscar uno por su código, registrar uno nuevo, modificar sus datos y eliminarlo.
 
-Aplicación web distribuida, multicapa y heterogénea para la administración de monitores académicos mediante servicios REST y JSON.
+El proyecto se trabajó por partes: la interfaz está hecha con HTML, CSS y JavaScript; el controlador se desarrolló en Java; PHP recibe y reenvía las solicitudes; y Python se encarga de consultar y guardar la información en SQLite. Al final conectamos las capas y probamos tanto la API como las funciones de la página.
+Cómo está organizado
+Navegador
+   |
+   v
+Frontend (HTML, CSS y JavaScript)     puerto 5500
+   |
+   v
+Controlador Java (Spring Boot)       puerto 8080
+   |
+   v
+Intermediario PHP (cURL)             puerto 8000
+   |
+   v
+Servicio Python (Flask)              puerto 5000
+   |
+   v
+Base de datos SQLite
+Carpeta	Qué hace
+frontend/	Muestra los formularios, la tabla de monitores y los botones para consultar, editar y eliminar.
+java-controller/	Recibe las peticiones que envía la interfaz y las comunica al servicio PHP.
+php-broker/	Utiliza cURL para pasar las solicitudes a Python y devolver las respuestas.
+python-service/	Atiende las operaciones sobre los monitores y las materias.
+db/	Contiene el esquema de la base de datos SQLite.
 
-## Arquitectura y Puertos Locales
 
-* **Frontend (HTML/CSS/JS):** `http://localhost:5500` (`/frontend`)
-* **Controlador (Java):** `http://localhost:8080` (`/java-controller`)
-* **Intermediario / Proxy (PHP):** `http://localhost:8000` (`/php-broker`)
-* **Persistencia (Python - Flask):** `http://localhost:5000` (`/python-service`)
-* **Base de Datos (SQLite):** `/db/schema.sql`
-
-## Contrato de Endpoints (Todas las capas)
-
-* `GET /api/materias` — Lista las 8 asignaturas precargadas.
-* `GET /api/monitores` — Lista todos los monitores registrados.
-* `GET /api/monitores/{codigo}` — Consulta un monitor por código.
-* `POST /api/monitores` — Registra un monitor (`201`, `400`, `409`).
-* `PUT /api/monitores/{codigo}` — Actualiza un monitor (`200`, `400`, `404`).
-* `DELETE /api/monitores/{codigo}` — Elimina un monitor (`200`, `404`).
-
-## Cómo ejecutar la capa de Persistencia (Python + BD)
-
-```bash
+La página se abre en http://localhost:5500 y se comunica con la API de Java en http://localhost:8080. Las capas intercambian información mediante HTTP y JSON.
+Qué se necesita para ejecutarlo
+- Java 17.
+- Python con pip.
+- PHP 8 o superior, con la extensión cURL habilitada. También sirve el PHP incluido en XAMPP.
+- Un navegador web.
+- Postman para volver a ejecutar las pruebas automáticas, si se desea.
+El controlador ya trae el Gradle Wrapper, así que no hace falta instalar Gradle por separado.
+Cómo ejecutar el proyecto en Windows
+Hay que abrir cuatro terminales ubicadas inicialmente en la carpeta principal del repositorio. Las dejamos abiertas mientras utilizamos la aplicación. El orden que usamos para probarla fue Python, PHP, Java y, por último, el frontend.
+1. Servicio Python y base de datos (puerto 5000)
+En la primera terminal:
 cd python-service
-python -m venv venv
-source venv/Scripts/activate   # En PowerShell: .\venv\Scripts\Activate.ps1
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python app.py
-
-
-## Ejecución del intermediario PHP
-
-El servicio PHP funciona como intermediario entre el controlador Java
-y el servicio Python. Recibe peticiones HTTP, las reenvía mediante
-cURL y devuelve las respuestas conservando los códigos HTTP.
-
-### Requisitos
-
-- PHP 8 o superior.
-- Extensión cURL habilitada.
-- Servicio Python ejecutándose en el puerto 5000.
-
-### Iniciar el servicio
-
-Desde la carpeta principal del proyecto:
-
-```powershell
+Si ya se creó el entorno virtual y están instaladas las dependencias, se puede utilizar el existente. Este servicio trabaja con SQLite.
+2. Intermediario PHP (puerto 8000)
+En la segunda terminal:
 cd php-broker
 php -S localhost:8000 router.php
-```
-
-Si PHP no está agregado al PATH de Windows y se utiliza XAMPP:
-
-```powershell
+En nuestro equipo usamos PHP desde XAMPP. Si el comando php no funciona directamente, se puede iniciar así:
+cd php-broker
 & "C:\xampp\php\php.exe" -S localhost:8000 router.php
-```
+Es importante estar dentro de php-broker al iniciar el servidor. Durante las pruebas tuvimos un error por ejecutarlo desde la carpeta equivocada y PHP no encontraba router.php.
 
-El servicio estará disponible en:
-
-http://localhost:8000
-
-Es importante ejecutar el servidor desde la carpeta `php-broker`
-para que PHP encuentre correctamente el archivo `router.php`.
-
-### Verificar la comunicación
-
-Con Python y PHP ejecutándose, abrir una nueva terminal:
-
-```powershell
+Para comprobar que responde:
 curl.exe -i http://localhost:8000/api/materias
-curl.exe -i http://localhost:8000/api/monitores
-```
+3. Controlador Java (puerto 8080)
+En la tercera terminal:
+cd java-controller
+.\gradlew.bat bootRun
+Java debe ejecutarse con JDK 17. En java-controller/src/main/resources/application.properties dejamos la dirección de PHP configurable:
+spring.application.name=monitores-controller
+server.port=8080
+php.service.url=${PHP_SERVICE_URL:http://localhost:8000}
+Normalmente basta con http://localhost:8000. En nuestro computador encontramos que PHP estaba respondiendo por IPv6 y Java no lograba conectarse con la dirección predeterminada. Para ese caso usamos esta variable antes de iniciar Java, en la misma terminal:
+$env:PHP_SERVICE_URL = "http://[::1]:8000"
+.\gradlew.bat bootRun
+No es necesario configurar IPv6 si ambos servicios ya se comunican normalmente.
 
-Ambas consultas deben devolver un código HTTP 200 y una
-respuesta en formato JSON.
+Con los tres servicios encendidos, se puede revisar la API de Java:
+curl.exe -i http://localhost:8080/api/materias
+curl.exe -i http://localhost:8080/api/monitores
+4. Interfaz web (puerto 5500)
+En la cuarta terminal:
+cd frontend
+python -m http.server 5500
+Después abrimos http://localhost:5500 en el navegador. Allí aparece el formulario de registro y la tabla con los monitores, además de las opciones de búsqueda, edición y eliminación.
+Los comandos anteriores parten de la carpeta principal del proyecto. Si la terminal ya está dentro de frontend, php-broker o alguna otra carpeta, no hay que repetir el cd.
 
-## Pruebas de calidad con Postman
+Funciones disponibles y rutas de la API
+Método	Ruta	Para qué se utiliza
+GET	/api/materias	Ver las 8 materias precargadas.
+GET	/api/monitores	Listar los monitores.
+GET	/api/monitores/{codigo}	Buscar un monitor por su código.
+POST	/api/monitores	Registrar un monitor.
+PUT	/api/monitores/{codigo}	Actualizar sus datos.
+DELETE	/api/monitores/{codigo}	Eliminar un monitor.
 
-El proyecto cuenta con una colección de Postman ubicada en:
 
-`postman/Gestion_Monitores_QA.postman_collection.json`
+Por ejemplo, para registrar un monitor enviamos un JSON con estos campos:
+{
+  "codigo": "202698",
+  "nombre_completo": "Monitor Prueba Frontend",
+  "correo": "prueba.frontend@ucaldas.edu.co",
+  "materia_id": 1
+}
+El materia_id debe existir en la lista de materias. Cuando consultamos los monitores, también se devuelve el nombre de la materia en el campo materia_nombre.
 
-Esta colección permite probar los endpoints y validar
-automáticamente sus respuestas.
+Además de comprobar las operaciones, revisamos las respuestas HTTP: 200 para operaciones correctas, 201 cuando se crea un registro, 400 para datos inválidos, 404 cuando no existe el registro, 405 para métodos no permitidos y 409 cuando intentamos usar un código repetido.
+Pruebas con Postman
+La colección que utilizamos está guardada en:
 
-### Importar la colección
+postman/Gestion_Monitores_QA.postman_collection.json
 
-1. Abrir Postman.
-2. Seleccionar Import.
-3. Buscar el archivo JSON dentro de la carpeta `postman`.
-4. Importar la colección.
-5. Verificar las variables de configuración.
+Para usarla, se importa ese archivo en Postman y se revisan estas variables:
+Variable	Valor
+base_url	http://localhost:8000 para probar PHP o http://localhost:8080 para probar Java.
+codigo_prueba	202699
 
-### Variables
 
-- `base_url`: http://localhost:8000
-- `codigo_prueba`: 202699
+La colección está dividida en tres carpetas:
+1. 01 - Consultas sin modificar datos: lista las materias y los monitores, busca por código y comprueba respuestas 404 y 405.
+2. 02 - Validaciones de errores: comprueba qué ocurre si faltan campos o se intenta registrar un código que ya existe.
+3. 03 - CRUD secuencial (ejecutar en orden): crea un monitor de prueba, lo consulta, lo actualiza, lo elimina y verifica que ya no aparezca.
+La tercera carpeta debe ejecutarse en el orden indicado. También hay que asegurarse de que 202699 no exista antes de comenzar otra ejecución.
+Resultados que obtuvimos
+Primero ejecutamos las pruebas contra PHP (puerto 8000) y después repetimos la misma colección pasando por el controlador Java (puerto 8080).
+Grupo de pruebas	Desde PHP	Desde Java
+Consultas	15/15	15/15
+Validaciones de errores	6/6	6/6
+CRUD secuencial	18/18	18/18
+Total	39/39	39/39
 
-La variable `base_url` permite ejecutar las pruebas contra
-diferentes servicios:
 
-- Python: http://localhost:5000
-- PHP: http://localhost:8000
-- Java: http://localhost:8080 (cuando esté integrado)
+En total aprobamos 78 validaciones y no hubo pruebas fallidas. Son dos ejecuciones de la colección: 39 contra PHP y 39 contra Java.
 
-### Organización de las pruebas
-
-**01 - Consultas sin modificar datos**
-
-Contiene consultas de materias y monitores, búsqueda por código
-y validaciones de respuestas 404 y 405.
-
-**02 - Validaciones de errores**
-
-Comprueba el manejo de campos obligatorios y códigos duplicados,
-mediante respuestas HTTP 400 y 409.
-
-**03 - CRUD secuencial**
-
-Ejecuta las operaciones de registro, consulta, actualización y
-eliminación de un monitor temporal.
-
-Esta carpeta debe ejecutarse en el orden definido. El código
-temporal debe estar disponible antes de comenzar.
-
-### Resultados de las pruebas
-
-Se realizaron pruebas locales sobre la comunicación PHP-Python
-utilizando Postman Collection Runner.
-
-| Grupo | Aprobadas | Fallidas |
-|---|---:|---:|
-| Consultas | 15 | 0 |
-| Validaciones de errores | 6 | 0 |
-| CRUD secuencial | 18 | 0 |
-| **Total** | **39** | **0** |
-
-Las 39 validaciones automáticas se aprobaron durante las pruebas
-locales del 20 de noviembre de 2026.
-
-Estos resultados corresponden a la integración PHP-Python.
-No representan todavía pruebas completas del frontend con Java.
-
-## Estado de integración
-
-### Componentes probados
-
-- Base de datos SQLite y servicio Python.
-- Servicio intermediario PHP.
-- Comunicación PHP-Python mediante cURL.
-- Operaciones CRUD y manejo de errores HTTP.
-- Colección de Postman con pruebas automáticas.
-
-### Integraciones pendientes de verificar
-
-- Controlador Java con el intermediario PHP.
-- Interfaz web con el controlador Java.
-- Pruebas de funcionamiento de extremo a extremo.
-
-## Recomendaciones
-
-- Ejecutar Python antes de iniciar las pruebas de PHP.
-- Verificar que los puertos 5000 y 8000 estén disponibles.
-- No ejecutar PHP desde una carpeta diferente a `php-broker`.
-- No modificar los códigos de monitores originales durante las pruebas.
-- Conservar el orden de las operaciones CRUD en Postman.
-- No subir entornos virtuales ni archivos temporales a GitHub.
-
-```
+También probamos la interfaz en el navegador. Comprobamos que cargaran las materias y los monitores y que funcionaran la búsqueda, el registro, la edición y la eliminación. Esas operaciones se hicieron desde la página, no solo desde Postman.
+Problemas que resolvimos
+Durante la integración no todo funcionó al primer intento. Estos fueron los inconvenientes que encontramos y cómo los corregimos:
+- Java no compilaba correctamente: agregamos la dependencia Jackson en build.gradle, que necesitaba el controlador para trabajar con JSON.
+- Una prueba de Java tenía un problema de importación: actualizamos AutoConfigureMockMvc para la versión de Spring Boot utilizada.
+- La configuración pedía Java 17: instalamos y usamos esa versión para ejecutar Gradle y el controlador.
+- Java no lograba comunicarse con PHP: comprobamos que PHP estaba escuchando por IPv6 en nuestro equipo. Dejamos PHP_SERVICE_URL como variable configurable y así pudimos hacer la conexión.
+- PHP no encontraba router.php: estábamos iniciando el servidor desde otra carpeta. Lo solucionamos ejecutándolo dentro de php-broker.
+Después de estas correcciones repetimos las pruebas contra Java y pasaron las 39 validaciones.
+Archivos que sirven para revisar el trabajo
+- Diagrama de secuencia del controlador Java, elaborado para el entregable de Pablo: java-controller/docs/entregable-2-diagrama-secuencia.md.
+- Colección de Postman: postman/Gestion_Monitores_QA.postman_collection.json.
+- Código de la interfaz: frontend/.
+- Controlador Java: java-controller/.
+- Intermediario PHP: php-broker/.
+- Servicio Python y esquema de base de datos: python-service/ y db/.
+Recomendaciones al volver a ejecutarlo
+- Iniciar los servicios en el orden indicado y comprobar que estén libres los puertos 5000, 8000, 8080 y 5500.
+- Mantener las cuatro terminales abiertas mientras se usa la aplicación.
+- Para las pruebas CRUD, utilizar un código temporal y no modificar los monitores precargados.
+- No subir al repositorio entornos virtuales, archivos temporales ni resultados de compilación.
+Resultado del taller
+Conseguimos conectar la interfaz con Java, PHP, Python y SQLite. Probamos el CRUD desde la página y confirmamos las respuestas de la API mediante Postman. El resultado fue de 78 validaciones aprobadas, además de las comprobaciones manuales en el navegador. El sistema quedó funcionando con las capas que planteamos para el taller.
